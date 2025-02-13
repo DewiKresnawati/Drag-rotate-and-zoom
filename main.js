@@ -2,13 +2,13 @@
 const map = new ol.Map({
   target: 'map',
   layers: [
-      new ol.layer.Tile({
-          source: new ol.source.OSM(),
-      }),
+    new ol.layer.Tile({
+      source: new ol.source.OSM(),
+    }),
   ],
   view: new ol.View({
-      center: ol.proj.fromLonLat([0, 0]), // Default ke koordinat awal
-      zoom: 2,
+    center: ol.proj.fromLonLat([0, 0]), // Default awal
+    zoom: 2,
   }),
 });
 
@@ -30,11 +30,11 @@ const userLocationSource = new ol.source.Vector();
 const userLocationLayer = new ol.layer.Vector({
   source: userLocationSource,
   style: new ol.style.Style({
-      image: new ol.style.Icon({
-          anchor: [0.5, 1],
-          src: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', // Pin merah
-          scale: 0.07,
-      }),
+    image: new ol.style.Icon({
+      anchor: [0.5, 1],
+      src: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', // Pin merah
+      scale: 0.07,
+    }),
   }),
 });
 map.addLayer(userLocationLayer);
@@ -42,13 +42,21 @@ map.addLayer(userLocationLayer);
 // Fungsi mendapatkan lokasi pengguna
 document.getElementById('getLocation').addEventListener('click', function () {
   if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(showPosition, showError, {
-          enableHighAccuracy: true, // Meningkatkan akurasi
-          timeout: 10000,
-          maximumAge: 0
-      });
+    navigator.geolocation.getCurrentPosition(
+      showPosition,
+      showError,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   } else {
-      alert("Geolocation tidak didukung di browser ini.");
+    Swal.fire({
+      title: "Error",
+      text: "Geolocation tidak didukung di browser ini.",
+      icon: "error",
+    });
   }
 });
 
@@ -58,48 +66,64 @@ function showPosition(position) {
   const lon = position.coords.longitude;
   const userCoords = ol.proj.fromLonLat([lon, lat]);
 
-  // Tambahkan marker ke lokasi pengguna
+  // **Hapus marker lama sebelum menambahkan yang baru**
   userLocationSource.clear();
+
+  // **Tambahkan marker ke lokasi pengguna**
   const userMarker = new ol.Feature({
-      geometry: new ol.geom.Point(userCoords),
+    geometry: new ol.geom.Point(userCoords),
   });
   userLocationSource.addFeature(userMarker);
 
-  // **Geser tampilan peta ke lokasi pengguna dan zoom otomatis**
-  map.getView().animate({ center: userCoords, zoom: 17, duration: 1000 });
+  // **Update tampilan peta ke titik marker secara langsung (bukan animasi)**
+  map.getView().setCenter(userCoords);
+  map.getView().setZoom(17);
 
-  // Ambil alamat menggunakan reverse geocoding OpenStreetMap
+  // **Ambil alamat menggunakan reverse geocoding OpenStreetMap**
   fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-      .then(response => response.json())
-      .then(data => {
-          popupAddress.textContent = data.display_name;
-          popupCoords.textContent = `${lon.toFixed(6)}, ${lat.toFixed(6)}`;
+    .then(response => response.json())
+    .then(data => {
+      popupAddress.textContent = data.display_name || "Alamat tidak ditemukan";
+      popupCoords.textContent = `${lon.toFixed(6)}, ${lat.toFixed(6)}`;
 
-          // **Tampilkan popup di atas marker**
-          overlay.setPosition(userCoords);
-          popup.style.display = 'block';
-      });
+      // **Tampilkan popup di atas marker**
+      overlay.setPosition(userCoords);
+      popup.style.display = 'block';
+    })
+    .catch(() => {
+      popupAddress.textContent = "Data lokasi tidak ditemukan";
+      popupCoords.textContent = `${lon.toFixed(6)}, ${lat.toFixed(6)}`;
+      overlay.setPosition(userCoords);
+      popup.style.display = 'block';
+    });
 }
 
 // Fungsi menangani error geolocation
 function showError(error) {
+  let errorMessage;
   switch (error.code) {
-      case error.PERMISSION_DENIED:
-          alert("Pengguna menolak permintaan geolocation.");
-          break;
-      case error.POSITION_UNAVAILABLE:
-          alert("Informasi lokasi tidak tersedia.");
-          break;
-      case error.TIMEOUT:
-          alert("Permintaan lokasi melebihi waktu.");
-          break;
-      case error.UNKNOWN_ERROR:
-          alert("Terjadi kesalahan yang tidak diketahui.");
-          break;
+    case error.PERMISSION_DENIED:
+      errorMessage = "Pengguna menolak permintaan geolocation.";
+      break;
+    case error.POSITION_UNAVAILABLE:
+      errorMessage = "Informasi lokasi tidak tersedia.";
+      break;
+    case error.TIMEOUT:
+      errorMessage = "Permintaan lokasi melebihi waktu.";
+      break;
+    case error.UNKNOWN_ERROR:
+      errorMessage = "Terjadi kesalahan yang tidak diketahui.";
+      break;
   }
+  Swal.fire({
+    title: "Error",
+    text: errorMessage,
+    icon: "error",
+  });
 }
 
 // Fungsi menutup pop-up
 closePopup.addEventListener('click', () => {
   popup.style.display = 'none';
+  overlay.setPosition(undefined);
 });
