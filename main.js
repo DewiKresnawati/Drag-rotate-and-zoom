@@ -32,7 +32,7 @@ const userLocationLayer = new ol.layer.Vector({
   style: new ol.style.Style({
     image: new ol.style.Icon({
       anchor: [0.5, 1],
-      src: 'https://cdn-icons-png.flaticon.com/512/447/447031.png', // Pin merah
+      src: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', // 🔴 Icon merah
       scale: 0.07,
     }),
   }),
